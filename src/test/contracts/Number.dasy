@@ -1,0 +1,7 @@
+(defvar number :uint256)
+
+(defn setNumber [:uint256 val] :external
+    (set-self val))
+
+(defn getNumber [] :uint256 :external
+    (return self/val))
