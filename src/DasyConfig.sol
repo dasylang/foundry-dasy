@@ -134,7 +134,7 @@ contract DasyConfig {
 
         string[] memory cmds = new string[](2);
         cmds[0] = "dasy";
-        cmds[1] = string.concat("src/", fileName, ".dasy");
+        cmds[1] = string.concat("src/", file, ".dasy");
 
         /// @notice compile the Dasy contract and return the bytecode
         bytes memory bytecode = vm.ffi(cmds);
