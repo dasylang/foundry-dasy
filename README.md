@@ -1,6 +1,6 @@
 # Foundry x Dasy
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![Discord](https://img.shields.io/discord/980519274600882306)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A [foundry](https://github.com/foundry-rs/foundry) library for working with [dasy](https://github.com/dasylang/dasy) contracts. Take a look at [z80's skunkworks](https://github.com/z80dev/skunkworks) to see an example project that uses this library.
 
