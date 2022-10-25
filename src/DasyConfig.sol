@@ -4,10 +4,10 @@ pragma solidity >=0.8.13 <0.9.0;
 import {Vm} from "forge-std/Vm.sol";
 import {strings} from "stringutils/strings.sol";
 
-contract HuffConfig {
+contract DasyConfig {
     using strings for *;
 
-    /// @notice Initializes cheat codes in order to use ffi to compile Huff contracts
+    /// @notice Initializes cheat codes in order to use ffi to compile Dasy contracts
     Vm public constant vm = Vm(address(bytes20(uint160(uint256(keccak256("hevm cheat code"))))));
 
     /// @notice Struct that represents a constant to be passed to the `-c` flag
@@ -32,19 +32,19 @@ contract HuffConfig {
     Constant[] public const_overrides;
 
     /// @notice sets the code to be appended to the source file
-    function with_code(string memory code_) public returns (HuffConfig) {
+    function with_code(string memory code_) public returns (DasyConfig) {
         code = code_;
         return this;
     }
 
     /// @notice sets the arguments to be appended to the bytecode
-    function with_args(bytes memory args_) public returns (HuffConfig) {
+    function with_args(bytes memory args_) public returns (DasyConfig) {
         args = args_;
         return this;
     }
 
     /// @notice sets the amount of wei to deploy the contract with
-    function with_value(uint256 value_) public returns (HuffConfig) {
+    function with_value(uint256 value_) public returns (DasyConfig) {
         value = value_;
         return this;
     }
@@ -55,7 +55,7 @@ contract HuffConfig {
     function with_constant(
         string memory key,
         string memory value_
-    ) public returns (HuffConfig) {
+    ) public returns (DasyConfig) {
         const_overrides.push(Constant(key, value_));
         return this;
     }
@@ -64,7 +64,7 @@ contract HuffConfig {
     function with_addr_constant(
         string memory key,
         address value_
-    ) public returns (HuffConfig) {
+    ) public returns (DasyConfig) {
         const_overrides.push(Constant(key, bytesToString(abi.encodePacked(value_))));
         return this;
     }
@@ -73,7 +73,7 @@ contract HuffConfig {
     function with_bytes32_constant(
         string memory key,
         bytes32 value_
-    ) public returns (HuffConfig) {
+    ) public returns (DasyConfig) {
         const_overrides.push(Constant(key, bytesToString(abi.encodePacked(value_))));
         return this;
     }
@@ -82,27 +82,27 @@ contract HuffConfig {
     function with_uint_constant(
         string memory key,
         uint256 value_
-    ) public returns (HuffConfig) {
+    ) public returns (DasyConfig) {
         const_overrides.push(Constant(key, bytesToString(abi.encodePacked(value_))));
         return this;
     }
 
     /// @notice sets whether to broadcast the deployment
-    function set_broadcast(bool broadcast) public returns (HuffConfig) {
+    function set_broadcast(bool broadcast) public returns (DasyConfig) {
         should_broadcast = broadcast;
         return this;
     }
 
-    /// @notice Checks for huffc binary conflicts
+    /// @notice Checks for dasyc binary conflicts
     function binary_check() public {
         string[] memory bincheck = new string[](1);
-        bincheck[0] = "./lib/foundry-huff/scripts/binary_check.sh";
+        bincheck[0] = "./lib/foundry-dasy/scripts/binary_check.sh";
         bytes memory retData = vm.ffi(bincheck);
         bytes8 first_bytes = retData[0];
         bool decoded = first_bytes == bytes8(hex"01");
         require(
             decoded,
-            "Invalid huffc binary. Run `curl -L get.huff.sh | bash` and `huffup` to fix."
+            "Invalid dasyc binary. Run `curl -L get.dasy.sh | bash` and `dasyup` to fix."
         );
     }
 
@@ -131,77 +131,14 @@ contract HuffConfig {
 
     /// @notice Deploy the Contract
     function deploy(string memory file) public payable returns (address) {
-        binary_check();
 
-        // Split the file into it's parts
-        strings.slice memory s = file.toSlice();
-        strings.slice memory delim = "/".toSlice();
-        string[] memory parts = new string[](s.count(delim) + 1);
-        for (uint256 i = 0; i < parts.length; i++) {
-            parts[i] = s.split(delim).toString();
-        }
+        string[] memory cmds = new string[](2);
+        cmds[0] = "dasy";
+        cmds[1] = string.concat("src/", fileName, ".dasy");
 
-        // Get the system time with our script
-        string[] memory time = new string[](1);
-        time[0] = "./lib/foundry-huff/scripts/rand_bytes.sh";
-        bytes memory retData = vm.ffi(time);
-        string memory rand_bytes =
-            bytes32ToString(keccak256(abi.encode(bytes32(retData))));
-
-        // Re-concatenate the file with a "__TEMP__" prefix
-        string memory tempFile = parts[0];
-        if (parts.length <= 1) {
-            tempFile = string.concat("__TEMP__", rand_bytes, tempFile);
-        } else {
-            for (uint256 i = 1; i < parts.length - 1; i++) {
-                tempFile = string.concat(tempFile, "/", parts[i]);
-            }
-            tempFile = string.concat(
-                tempFile, "/", "__TEMP__", rand_bytes, parts[parts.length - 1]
-            );
-        }
-
-        // Paste the code in a new temp file
-        string[] memory create_cmds = new string[](3);
-        // TODO: create_cmds[0] = "$(find . -name \"file_writer.sh\")";
-        create_cmds[0] = "./lib/foundry-huff/scripts/file_writer.sh";
-        create_cmds[1] = string.concat("src/", tempFile, ".huff");
-        create_cmds[2] = string.concat(code, "\n");
-        vm.ffi(create_cmds);
-
-        // Append the real code to the temp file
-        string[] memory append_cmds = new string[](3);
-        append_cmds[0] = "./lib/foundry-huff/scripts/read_and_append.sh";
-        append_cmds[1] = string.concat("src/", tempFile, ".huff");
-        append_cmds[2] = string.concat("src/", file, ".huff");
-        vm.ffi(append_cmds);
-
-        /// Create a list of strings with the commands necessary to compile Huff contracts
-        string[] memory cmds = new string[](3);
-        if (const_overrides.length > 0) {
-            cmds = new string[](4 + const_overrides.length);
-            cmds[3] = "-c";
-
-            Constant memory cur_const;
-            for (uint256 i; i < const_overrides.length; i++) {
-                cur_const = const_overrides[i];
-                cmds[4 + i] = string.concat(cur_const.key, "=", cur_const.value);
-            }
-        }
-
-        cmds[0] = "huffc";
-        cmds[1] = string(string.concat("src/", tempFile, ".huff"));
-        cmds[2] = "-b";
-
-        /// @notice compile the Huff contract and return the bytecode
+        /// @notice compile the Dasy contract and return the bytecode
         bytes memory bytecode = vm.ffi(cmds);
         bytes memory concatenated = bytes.concat(bytecode, args);
-
-        // Clean up temp files
-        string[] memory cleanup = new string[](2);
-        cleanup[0] = "rm";
-        cleanup[1] = string.concat("src/", tempFile, ".huff");
-        vm.ffi(cleanup);
 
         /// @notice deploy the bytecode with the create instruction
         address deployedAddress;
