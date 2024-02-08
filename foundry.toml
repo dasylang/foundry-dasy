@@ -2,5 +2,11 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
+
+# Enable FFI by default so that we can invoke the Dasy compiler
 ffi = true
 fuzz_runs = 2_000
+
+# Make both Solidity and EVM versions explicit (see https://github.com/foundry-rs/foundry/issues/4988#issuecomment-1556331314)
+solc_version = '0.8.20'
+evm_version = 'shanghai'
